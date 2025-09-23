@@ -72,3 +72,7 @@ client:
 make http
 make wsclient
 ```
+
+## Known issues
+- sarama SyncProducer is too slow, use AsyncProducer instead
+- potential bottleneck with one topic partition
