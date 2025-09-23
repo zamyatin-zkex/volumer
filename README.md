@@ -20,9 +20,34 @@ flowchart TD
     F[faketrader] -- "trades" --> K[Kafka]
     K -- "trades" --> C[consumer]
     C -- "processed trades" --> R[roller]
+    R -- "request commit" --> C
+    C -- "commit offsets" --> K
     R -- "volume stats" --> Wt[watcher]
     Wt -- "updated stats" --> W[web]
     W -- "HTTP / WebSocket responses" --> U[(Users)]
 
     I[interrupter] -. "listens for syscalls" .-> I
+```
+
+```mermaid
+    sequenceDiagram
+    participant F as faketrader
+    participant K as Kafka
+    participant C as consumer
+    participant R as roller
+    participant Wt as watcher
+    participant W as web
+    participant U as user
+    participant I as interrupter
+
+    F->>K: publish trades
+    K->>C: consume trades
+    C->>R: send processed trades
+    R->>C: request offset commit
+    C->>K: commit offsets
+    R->>Wt: provide volume stats on request
+    Wt->>W: update aggregated stats
+    W->>U: serve stats (HTTP / WebSockets)
+
+    Note over I: listens for syscalls
 ```
