@@ -1,6 +1,7 @@
 # Volumer
 
-**Volumer** is a real-time service for calculating trading volume statistics over different time intervals (5m, 1h, 24h, ...).
+**Volumer** is a real-time service for calculating trading volume statistics over different time intervals (5m, 1h, 24h, ...) 
+with rolling sums alg.
 
 ## What for
 
