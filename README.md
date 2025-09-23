@@ -22,10 +22,10 @@ Volumer consists of the following services:
 
 - **faketrader** — generates trades and publishes them to Kafka.
 - **consumer** — reads trades from Kafka and commits offsets when state is saved.
-- **roller** — aggregates trading volume over specified time intervals.
-- **watcher** — polls `roller` and updates data for `web`.
-- **interrupter** — listens for system calls (syscalls).
+- **roller** — aggregates trading volume over specified time intervals, saves state and notify consumer for commit.
+- **watcher** — polls `roller.Stats` and updates data for `web`.
 - **web** — serves trading statistics via WebSockets and HTTP.
+- **interrupter** — listens for syscalls.
 
 ## Data Flow (Mermaid)
 
