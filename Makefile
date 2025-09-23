@@ -1,3 +1,5 @@
+kafka:
+	docker-compose -f compose-onlykafka-arm.yml up -d
 
 clear:
 	docker rm -f $$(docker ps -q) && docker-compose -f compose-onlykafka-arm.yml up -d
@@ -7,3 +9,7 @@ wsclient:
 
 http:
 	curl 127.0.0.1:4242/stats?token=BTC
+
+run:
+	go run cmd/volumer.go
+
