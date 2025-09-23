@@ -1,0 +1,23 @@
+version: '3'
+services:
+  zookeeper:
+#    image: wurstmeister/zookeeper
+    image: arm64v8/zookeeper
+    platform: linux/arm64
+    ports:
+      - "2181:2181"
+#    restart: unless-stopped
+
+  kafka:
+    image: wurstmeister/kafka
+    platform: linux/arm64
+    environment:
+#      KAFKA_ZOOKEEPER_CONNECT: 127.0.0.1:2181
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_HOST_NAME: 127.0.0.1
+      KAFKA_CREATE_TOPICS: "trades:1:1,rolls:1:1:compact"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_LOG_CLEANER_MAX_COMPACTION_LAG_MS: 2
+    ports:
+      - "9092:9092"
+
