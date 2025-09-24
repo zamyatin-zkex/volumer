@@ -2,7 +2,6 @@ package web
 
 import (
 	"github.com/gorilla/websocket"
-	"log"
 	"sync"
 	"time"
 )
@@ -53,6 +52,7 @@ func (k *keeper) keep(conn *websocket.Conn) {
 	defer pinger.Stop()
 
 	lastAlive := time.Now()
+	const deadlineSeconds = 5
 	read := make(chan msg)
 	defer k.close(conn)
 
@@ -83,8 +83,7 @@ func (k *keeper) keep(conn *websocket.Conn) {
 			if err := conn.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(time.Second)); err != nil {
 				return
 			}
-			if time.Since(lastAlive).Seconds() > 5 {
-				log.Println("keep alive")
+			if time.Since(lastAlive).Seconds() > deadlineSeconds {
 				return
 			}
 		case msg, ok := <-read:
