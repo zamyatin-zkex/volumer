@@ -35,6 +35,7 @@ flowchart TD
     K -- "trades" --> Ag[Aggregator]
     X(( )):::hidden
     Ag -- "aggregate tickers" --> X
+    X --> Ag
     Ag -- "save state for current offset+partition" --> Pg[postgres]
     Ag -- "commit offsets" --> K
     Ag -- "volume stats" --> Wt[watcher]
