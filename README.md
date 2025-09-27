@@ -33,7 +33,8 @@ Volumer consists of the following services:
 flowchart TD
     S[swapper] -- "trades" --> K[Kafka-trades]
     K -- "trades" --> Ag[Aggregator]
-    Ag -- "aggregate tickers" -.-> Ag
+    X(( )):::hidden
+    Ag -- "aggregate tickers" --> X
     Ag -- "save state for current offset+partition" --> Pg[postgres]
     Ag -- "commit offsets" --> K
     Ag -- "volume stats" --> Wt[watcher]
