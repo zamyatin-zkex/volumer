@@ -33,6 +33,7 @@ Volumer consists of the following services:
 flowchart TD
     S[swapper] -- "trades" --> K[Kafka]
     K -- "trades" --> C[consumer]
+    N[/This is a note/]:::note
     C -- "processed trades" --> R[roller]
     R -- "save state for current offset" --> Pg[postgres]
     R -- "notify consumer for commit this offset" --> C
