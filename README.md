@@ -33,12 +33,12 @@ Volumer consists of the following services:
 flowchart TD
     S[swapper] -- "trades" --> K[Kafka-trades]
     K -- "trades" --> Ag[Aggregator]
-    Ag -- "aggregate tickers" --> Ag
+    Ag -- "aggregate tickers" -.-> Ag
     Ag -- "save state for current offset+partition" --> Pg[postgres]
     Ag -- "commit offsets" --> K
     Ag -- "volume stats" --> Wt[watcher]
     Wt -- "update current stats" --> Re[redis]
-    Wt -- "notify current stats" --> Ks[Kafka-stats]
+    Wt -- "notify current stats" --> Ks[Kafka-stats-compacted]
     Re -- "current stats" --> W[web]
     Ks -- "current stats" --> W[web]
     W -- "HTTP / WebSocket responses" --> U[(Users)]
@@ -50,7 +50,7 @@ flowchart TD
 - postgres has a table (partition, offset, state) with the unique key (partition, offset)
 - aggregate instance periodically stores own state to postgres with upsert stmt(partition, offset, state)
 - aggregate instance commits stored part+offset to `trades` kafka topic
-- the aggregated statistics are pushed to redis and kafka `stats` topic
+- the aggregated statistics are pushed to redis, kafka `stats` topic, compacted by currency key
 - web service consumes `stats` topic and push statistics to users with websocket
 - web service serves statistics from redis with http
 
