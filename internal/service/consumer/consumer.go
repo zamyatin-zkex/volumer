@@ -62,6 +62,5 @@ func (c *Consumer) Run(ctx context.Context) error {
 }
 
 func (c *Consumer) Commit(ctx context.Context, saved event.StateSaved) error {
-	//return nil
 	return c.handler.commit(ctx, saved.Offset)
 }

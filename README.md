@@ -16,54 +16,51 @@ Design the complete architecture. What transport mechanisms would you use from p
 **Practical**<br>
 Implement the Go service that reads swap events from a channel, calculates statistics, serves the data over HTTP,  submits updates to a WebSocket channel and handles restarts. Use interfaces for storage. (edited)
 
-## Architecture
+## Volumer parts(this proj)
 
 Volumer consists of the following services:
 
 - **faketrader** — generates trades and publishes them to Kafka.
 - **consumer** — reads trades from Kafka and commits offsets when state is saved.
-- **roller** — aggregates trading volume over specified time intervals, saves state and notify consumer for commit.
-- **watcher** — polls `roller.Stats` and updates data for `web`.
+- **aggregator** — aggregates trading volume over specified time intervals, saves state and notify consumer for commit.
+- **watcher** — polls `aggregator.Stats` and updates data for `web`.
 - **web** — serves trading statistics via WebSockets and HTTP.
 - **interrupter** — listens for syscalls.
 
-## Data Flow (Mermaid)
+## Full system design (Mermaid)
 
 ```mermaid
 flowchart TD
     S[swapper] -- "trades" --> K[Kafka]
-    K -- "trades" --> C[consumer]
-    N[/This is a note/]:::note
-    C -- "processed trades" --> R[roller]
-    R -- "save state for current offset" --> Pg[postgres]
-    R -- "notify consumer for commit this offset" --> C
-    C -- "commit offsets" --> K
-    R -- "volume stats" --> Wt[watcher]
-    Wt -- "updated current stats" --> Re[redis]
+    K -- "trades" --> Ag[Aggregator]
+    Ag -- "aggregate tickers" --> Ag
+    Ag -- "save state for current offset+partition" --> Pg[postgres]
+    Ag -- "commit offsets" --> K
+    Ag -- "volume stats" --> Wt[watcher]
+    Wt -- "update current stats" --> Re[redis]
+    Wt -- "notify current stats" --> K
     Re -- "current stats" --> W[web]
+    K -- "current stats" --> W[web]
     W -- "HTTP / WebSocket responses" --> U[(Users)]
 ```
+### Data flow
+- topic `trades` has multiple partitions 
+- trades/swaps fall into the kafka topic `trades` with `partition key = currency`. So trades within partition are time ordered
+- each aggregate instance consumes some partitions and aggregate tickers(10m, 1h...)
+- postgres has a table (partition, offset, state) with the unique key (partition, offset)
+- aggregate instance periodically stores own state to postgres with upsert stmt(partition, offset, state)
+- aggregate instance commits stored part+offset to `trades` kafka topic
+- the aggregated statistics are pushed to redis and kafka `stats` topic
+- web service consumes `stats` topic and push statistics to users with websocket
+- web service serves statistics from redis with http
 
-```mermaid
-    sequenceDiagram
-    participant F as faketrader
-    participant K as Kafka
-    participant C as consumer
-    participant R as roller
-    participant Wt as watcher
-    participant W as web
-    participant U as user
+### Restore aggregate service
+- aggregator connects to kafka with a consumer group
+- it gets assigned partitions with consumer callback `Setup(session sarama.ConsumerGroupSession)`
+- restore state for assigned partitions from postgres
+- skip trades from the topic with earlier offset than the restored (if app successfully stored state to PG, but cannot commit offset to kafka)
+- continue normal flow
 
-    F->>K: publish trades
-    K->>C: consume trades
-    C->>R: send trades
-    R->>K: save current state to rolls topic
-    R->>C: commit offset on trades topic
-    C->>K: commit offsets
-    R->>Wt: provide volume stats
-    Wt->>W: update aggregated stats
-    W->>U: serve stats (HTTP / WebSockets)
-```
 
 ## Run
 server:
@@ -71,12 +68,8 @@ server:
 make kafka
 make run
 ```
-client:
+clients:
 ```
 make http
 make wsclient
 ```
-
-## Known issues
-- sarama SyncProducer is too slow, use AsyncProducer instead
-- potential bottleneck with one topic partition

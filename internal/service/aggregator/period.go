@@ -1,4 +1,4 @@
-package roller
+package aggregator
 
 import "time"
 
@@ -6,7 +6,7 @@ type Period time.Duration
 
 type Periods map[string]time.Duration
 
-func (p Periods) Max() Period {
+func (p Periods) max() Period {
 	if len(p) == 0 {
 		return 0
 	}

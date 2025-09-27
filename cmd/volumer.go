@@ -6,6 +6,7 @@ import (
 	"github.com/zamyatin-zkex/volumer/config"
 	"github.com/zamyatin-zkex/volumer/internal/event"
 	"github.com/zamyatin-zkex/volumer/internal/repository"
+	"github.com/zamyatin-zkex/volumer/internal/service/aggregator"
 	"github.com/zamyatin-zkex/volumer/internal/service/consumer"
 	"github.com/zamyatin-zkex/volumer/internal/service/faketrader"
 	"github.com/zamyatin-zkex/volumer/internal/service/watcher"
@@ -16,7 +17,6 @@ import (
 	"time"
 
 	"github.com/zamyatin-zkex/volumer/internal/service/interrupter"
-	"github.com/zamyatin-zkex/volumer/internal/service/roller"
 	"github.com/zamyatin-zkex/volumer/pkg/app"
 )
 
@@ -35,12 +35,12 @@ func main() {
 	fakeTrader := faketrader.NewTrader(tradeRepo, "ETH", "BTC")
 	consumer := utils.Must(consumer.NewConsumer(kafkaCl, cfg.Kafka.TradeTopic, cfg.Kafka.TradeGroup, eBus))
 	web := web.New(cfg.Web.Addr)
-	roller := roller.NewRoller(stateRepo, eBus).
-		AddToken(roller.NewToken("ETH", roller.Periods{"3s": time.Second * 3, "10s": time.Second * 10})).
-		AddToken(roller.NewToken("BTC", roller.Periods{"10s": time.Second * 10, "30s": time.Second * 30}))
+	aggregator := aggregator.NewAggregator(stateRepo, eBus).
+		AddToken(aggregator.NewToken("ETH", aggregator.Periods{"3s": time.Second * 3, "10s": time.Second * 10})).
+		AddToken(aggregator.NewToken("BTC", aggregator.Periods{"10s": time.Second * 10, "30s": time.Second * 30}))
 	watch := watcher.NewWatcher(eBus).
 		EmitEvery(time.Second, event.StatsUpdated{}, func(ctx context.Context) (any, error) {
-			return event.StatsUpdated{Tokens: roller.Stats()}, nil
+			return event.StatsUpdated{Tokens: aggregator.Stats()}, nil
 		})
 
 	eBus.
@@ -48,14 +48,14 @@ func main() {
 		Subscribe(event.StateRestored{}, watcher.LogAny).
 		Subscribe(event.TradeSkipped{}, watcher.LogAny).
 		Subscribe(event.StateSaved{}, ebus.Typed(consumer.Commit)).
-		Subscribe(event.TradeReceived{}, ebus.Typed(roller.HandleTrade)).
+		Subscribe(event.TradeReceived{}, ebus.Typed(aggregator.HandleTrade)).
 		Subscribe(event.StatsUpdated{}, ebus.Typed(web.UpdateStats))
 
 	err := app.NewApp().
-		WithService(roller).
 		WithService(fakeTrader).
-		WithService(watch).
 		WithService(consumer).
+		WithService(aggregator).
+		WithService(watch).
 		WithService(web).
 		WithService(interrupter.Interrupter{}).
 		Run(context.Background())

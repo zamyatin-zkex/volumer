@@ -1,4 +1,4 @@
-package roller
+package aggregator
 
 import (
 	"github.com/shopspring/decimal"

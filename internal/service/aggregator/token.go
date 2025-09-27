@@ -1,6 +1,7 @@
-package roller
+package aggregator
 
 import (
+	"github.com/zamyatin-zkex/volumer/internal/entity"
 	"github.com/zamyatin-zkex/volumer/internal/event"
 	"maps"
 	"sync"
@@ -24,7 +25,7 @@ func NewToken(name string, periods Periods) *Token {
 	return &Token{
 		Name:     name,
 		Periods:  periods,
-		Buckets:  ringbuf.New[Bucket](periods.Max().buckets()).PushFront(Bucket{StartedAt: time.Now()}),
+		Buckets:  ringbuf.New[Bucket](periods.max().buckets()).PushFront(Bucket{StartedAt: time.Now()}),
 		RollSums: make(map[string]decimal.Decimal),
 	}
 }
@@ -46,9 +47,9 @@ func (t *Token) Inc(trade event.TradeReceived) error {
 		return nil
 	}
 
-	// fall into last bucket
+	// fall into the last bucket
 	if ts.Before(lastBucket.StartedAt.Add(time.Second)) {
-		lastBucket = lastBucket.Add(amount)
+		lastBucket = lastBucket.add(amount)
 		t.Buckets.SetN(0, lastBucket)
 
 		for name := range t.Periods {
@@ -76,7 +77,7 @@ func (t *Token) Inc(trade event.TradeReceived) error {
 	return nil
 }
 
-func (t *Token) Stats() map[string]decimal.Decimal {
+func (t *Token) stats() map[string]decimal.Decimal {
 	t.mx.RLock()
 	defer t.mx.RUnlock()
 
@@ -84,4 +85,33 @@ func (t *Token) Stats() map[string]decimal.Decimal {
 	maps.Copy(stats, t.RollSums)
 
 	return stats
+}
+
+func (t *Token) state() entity.Token {
+	t.mx.RLock()
+	defer t.mx.RUnlock()
+
+	periods := make(map[string]time.Duration)
+	maps.Copy(periods, t.Periods)
+
+	sums := make(map[string]decimal.Decimal)
+	maps.Copy(sums, t.RollSums)
+
+	buckets := ringbuf.Ring[entity.Bucket]{}
+	buckets.Head = t.Buckets.Head
+	buckets.Data = make([]entity.Bucket, t.Buckets.Len())
+	for i := 0; i < t.Buckets.Len(); i++ {
+		buckets.Data[i] = entity.Bucket{
+			StartedAt: t.Buckets.Data[i].StartedAt,
+			Volume:    t.Buckets.Data[i].Volume,
+		}
+	}
+
+	return entity.Token{
+		Name:     t.Name,
+		Periods:  periods,
+		Buckets:  &buckets,
+		RollSums: sums,
+		Offset:   t.Offset,
+	}
 }

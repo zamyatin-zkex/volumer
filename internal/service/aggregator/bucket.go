@@ -1,4 +1,4 @@
-package roller
+package aggregator
 
 import (
 	"time"
@@ -11,7 +11,7 @@ type Bucket struct {
 	Volume    decimal.Decimal
 }
 
-func (b Bucket) Add(volume decimal.Decimal) Bucket {
+func (b Bucket) add(volume decimal.Decimal) Bucket {
 	b.Volume = b.Volume.Add(volume)
 	return b
 }
