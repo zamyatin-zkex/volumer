@@ -33,14 +33,11 @@ Volumer consists of the following services:
 flowchart TD
     S[swapper] -- "trades" --> K[Kafka-trades]
     K -- "trades" --> Ag[Aggregator]
-    X(( )):::hidden
-    Ag -- "aggregate tickers" --> X
-    X --> Ag
     Ag -- "save state for current offset+partition" --> Pg[postgres]
     Ag -- "commit offsets" --> K
     Ag -- "volume stats" --> Wt[watcher]
     Wt -- "update current stats" --> Re[redis]
-    Wt -- "notify current stats" --> Ks[Kafka-stats-compacted]
+    Wt -- "notify current stats" --> Ks[Kafka-stats]
     Re -- "current stats" --> W[web]
     Ks -- "current stats" --> W[web]
     W -- "HTTP / WebSocket responses" --> U[(Users)]
@@ -57,7 +54,7 @@ flowchart TD
 - web service serves statistics from redis with http
 
 ### Restore aggregate service
-- aggregator connects to kafka with a consumer group
+- aggregator connects to kafka-trades with a consumer group
 - it gets assigned partitions with consumer callback `Setup(session sarama.ConsumerGroupSession)`
 - restore state for assigned partitions from postgres
 - skip trades from the topic with earlier offset than the restored (if app successfully stored state to PG, but cannot commit offset to kafka)
