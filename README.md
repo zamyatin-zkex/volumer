@@ -31,13 +31,15 @@ Volumer consists of the following services:
 
 ```mermaid
 flowchart TD
-    F[faketrader] -- "trades" --> K[Kafka]
+    S[swapper] -- "trades" --> K[Kafka]
     K -- "trades" --> C[consumer]
     C -- "processed trades" --> R[roller]
-    R -- "request commit" --> C
+    R -- "save state for current offset" --> Pg[postgres]
+    R -- "notify consumer for commit this offset" --> C
     C -- "commit offsets" --> K
     R -- "volume stats" --> Wt[watcher]
-    Wt -- "updated stats" --> W[web]
+    Wt -- "updated current stats" --> Re[redis]
+    Re -- "current stats" --> W[web]
     W -- "HTTP / WebSocket responses" --> U[(Users)]
 ```
 
